@@ -1,5 +1,6 @@
 # arcgis-pro-geometry
-This is a collection of geometry tools for ArcGIS Pro. The tools are written with Python, mainly based on arcpy.  Each tool has been documented and can be directly used through the toolbox 'Toolbox.tbx'.
+This is a collection of geometry tools for ArcGIS Pro. The tools are written with Python, mainly based on arcpy. Each tool has been documented and can be directly used through the toolbox 'Toolbox.tbx'.
+
 
 Within the toolbox 'Toolbox.tbx' you find several tools to edit and calculate geometries:
 - Boundary: Create a boundary feature class for polyline or polygon feature (layer/classes).
@@ -11,30 +12,30 @@ Within the toolbox 'Toolbox.tbx' you find several tools to edit and calculate ge
 - Numerate: Sort any feature and create a field for the sort range.
 
 
-Why the project is useful?
+**Why the project is useful?**<br>
 These tools expands the possibilities in dealing with geometries.
 
 
-How can users get started with the project?
+**How can users get started with the project?**<br>
 After downloading the entire repo, the toolbox 'Toolbox.tbx' can be directly used within ArcGIS Pro.
 You can use the class 'Geometry' from the script '.script\Geometry.py' in other scripts as well.
 
 
-Where can users get help for their project?
+**Where can users get help for their project?**<br>
 - ArcGIS Pro - Every tool within the toolbox has edited metadata. You can read the metadata through the info buttons.
-- Class Geometry - Every script is documented. 
+- Class Geometry - Every script is documented.
 
 
-Requirements?
-ArcGIS Pro 2.8.1+
-Frameworks:
-- arcpy
-- numpy
-- os
-- sys
+**Requirements?**<br>
+- ArcGIS Pro 2.8.1+
+- Frameworks:
+    - arcpy
+    - numpy
+    - os
+    - sys
 
 
-Licensing?
+**Licensing?**<br>
 Copyright 2021 by Markus Schön
 
 Licensed under the Apache License, Version 2.0 (the "License");
