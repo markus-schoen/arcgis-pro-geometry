@@ -565,7 +565,7 @@ class Geometry:
                             row[4] = other_fc_out_dict[oid2].index(comb)
                             cursor.updateRow(row)
 
-    def inner_circle(self, out_circle, out_point=None, accuracy=0.1):
+    def inner_circle(self, out_circle, out_point=None, accuracy=0.01):
         """
         Create inner circles and centroids for the initialized polygon feature layer.
         :param str out_circle: Feature class containing the inner circles.
@@ -576,6 +576,10 @@ class Geometry:
         def recursive_function(polygon, dist=0, centroids_list=None, distances_list=None):
             """
             Calculate recursively the the maximum inner circle centroids.
+
+            Hint: The except statement only exits with an error message, because i am missing some issue cases. If you
+            have some issues feel free to contact me: https://github.com/markus-schoen/arcgis-pro-geometry/issues
+
             :param shape polygon: Polygon shape object.
             :param float dist: Inner circle radius. The value starts with 0 and increases recursively.
             :param list centroids_list: List of inner circle centroid point geometries.
@@ -585,38 +589,43 @@ class Geometry:
             """
 
             while True:
-                feature_boundary = polygon.boundary()
-                feature_centroid = polygon.centroid
+                try:
+                    feature_boundary = polygon.boundary()
+                    feature_centroid = polygon.centroid
 
-                if polygon.isMultipart:
-                    multi_part = arcpy.MultipartToSinglepart_management(polygon)
+                    if polygon.isMultipart:
+                        multi_part = arcpy.MultipartToSinglepart_management(polygon)
 
-                    with search_cursor(multi_part, "SHAPE@") as cur:
-                        dist_list = []
-                        for ro in cur:
-                            dist_pre = recursive_function(ro[0])
-                            dist_list.append(dist_pre)
+                        with search_cursor(multi_part, "SHAPE@") as cur:
+                            dist_list = []
+                            for ro in cur:
+                                dist_pre = recursive_function(ro[0])
+                                dist_list.append(dist_pre)
 
-                        sorted_list = sorted(dist_list, reverse=True)
-                        if sorted_list[0] != sorted_list[1]:
-                            min_dist = (sorted_list[0] + sorted_list[1])/2.0
-                        elif sorted_list[0] >= accuracy:
-                            min_dist = sorted_list[0] - accuracy
-                        else:
-                            min_dist = 0
-                else:
-                    min_dist = feature_boundary.distanceTo(arcpy.PointGeometry(feature_centroid))
+                            sorted_list = sorted(dist_list, reverse=True)
+                            if sorted_list[0] != sorted_list[1]:
+                                min_dist = (sorted_list[0] + sorted_list[1])/2.0
+                            elif sorted_list[0] >= accuracy:
+                                min_dist = sorted_list[0] - accuracy
+                            else:
+                                min_dist = 0
+                    else:
+                        min_dist = feature_boundary.distanceTo(arcpy.PointGeometry(feature_centroid))
 
-                dist += min_dist
+                    dist += min_dist
 
-                if min_dist <= accuracy:
-                    if centroids_list is not None:
-                        centroids_list.append(arcpy.PointGeometry(feature_centroid))
-                    if distances_list is not None:
-                        distances_list.append(dist)
+                    if min_dist <= accuracy:
+                        if centroids_list is not None:
+                            centroids_list.append(arcpy.PointGeometry(feature_centroid))
+                        if distances_list is not None:
+                            distances_list.append(dist)
+                        break
+
+                    polygon = polygon.buffer(float("-{0}".format(min_dist)))
+
+                except Exception as e:
+                    arcpy.AddError(e)
                     break
-
-                polygon = polygon.buffer(float("-{0}".format(min_dist)))
 
             return dist
 
