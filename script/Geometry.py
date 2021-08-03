@@ -616,7 +616,7 @@ class Geometry:
 
                     if min_dist <= accuracy:
                         if centroids_list is not None:
-                            centroids_list.append(arcpy.PointGeometry(feature_centroid))
+                            centroids_list.append(arcpy.PointGeometry(feature_centroid, self.spatial_reference))
                         if distances_list is not None:
                             distances_list.append(dist)
                         break
@@ -624,7 +624,7 @@ class Geometry:
                     polygon = polygon.buffer(float("-{0}".format(min_dist)))
 
                 except Exception as e:
-                    arcpy.AddError(e)
+                    arcpy.AddMessage(e)
                     break
 
             return dist

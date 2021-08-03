@@ -78,5 +78,7 @@ with Geometry(fc) as fc_geom:
 # Add boundary to content
 project = arcpy.mp.ArcGISProject("CURRENT")
 active_map = project.activeMap
-in_layer_out_fc = active_map.addDataFromPath(out_fc)
+
+if active_map:
+    in_layer_out_fc = active_map.addDataFromPath(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------

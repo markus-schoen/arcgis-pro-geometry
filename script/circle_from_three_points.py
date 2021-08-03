@@ -82,7 +82,9 @@ with Geometry(fc) as fc_geom:
 # Add convex hull to content
 project = arcpy.mp.ArcGISProject("CURRENT")
 active_map = project.activeMap
-active_map.addDataFromPath(out_fc_circle)
-if out_fc_circle_centroid:
-    active_map.addDataFromPath(out_fc_circle_centroid)
+
+if active_map:
+    active_map.addDataFromPath(out_fc_circle)
+    if out_fc_circle_centroid:
+        active_map.addDataFromPath(out_fc_circle_centroid)
 # ---------------------------------------------------------------------------------------------------------------------
