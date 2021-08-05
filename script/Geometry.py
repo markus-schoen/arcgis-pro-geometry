@@ -268,6 +268,29 @@ class Geometry:
         arcpy.CopyFeatures_management(convex_hulls, out_fc)
         return out_fc
 
+    def hull_rectangle(self, out_fc):
+        """
+        Create a hull rectangle feature class.
+        :param str out_fc: Path for the hull rectangle feature class.
+        :rtype: str
+        :return: Hull rectangle feature class path
+        """
+
+        polygons = []
+
+        for rect_coordinate_list in [list(map(float, x.hullRectangle.replace(',', '.').split())) for x in self.shape]:
+            array = arcpy.Array()
+            for i in range(4):
+                x = rect_coordinate_list[i * 2]
+                y = rect_coordinate_list[i * 2 + 1]
+                array.add(arcpy.Point(x, y))
+
+            polygons.append(arcpy.Polygon(array, self.spatial_reference))
+
+        arcpy.CopyFeatures_management(polygons, out_fc)
+
+        return out_fc
+
     def cut(self, cut_polyline, out_fc):
         """
         Cut a polyline/polygon by a polyline.
@@ -746,7 +769,7 @@ class Geometry:
                             array.add(arcpy.Point(pnt.X, pnt.Y))
 
             # Create and save polygon
-            polygon = arcpy.Polygon(array)
+            polygon = arcpy.Polygon(array, self.spatial_reference)
             polygon_list.append(polygon)
 
         # Create out_polygon (from collected polygons)
@@ -784,5 +807,8 @@ arcpy.env.overwriteOutput = True
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    pass
+    var = r"D:\Projekte\GIS\ArcGIS\Pro\WebApp\Default.gdb\Polygone"
+    var_out = r"D:\Projekte\GIS\ArcGIS\Pro\WebApp\Default.gdb\Polygone_rect"
+    geom = Geometry(var)
+    geom.hull_rectangle(var_out)
 # ---------------------------------------------------------------------------------------------------------------------
