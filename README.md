@@ -8,8 +8,9 @@ Within the toolbox 'Toolbox.tbx' you find several tools to edit and calculate ge
 - Convex hull: Create convex hulls for any feature (layer/class).
 - Cut: Create a cut feature class for polygon feature (layer/classes).
 - Distance lines: Create distance lines from point features to any feature (layer/class).
-- Inner circle: Create inner circle for any polygon feature (layer/class).
+- Inner circle: Create maximum inner circles and associated centroids for any polygon feature (layer/class).
 - Numerate: Sort any feature and create a field for the sort range.
+- Polyline To Polygon: Create a polygon feature class from a polyline feature (layer/class).
 
 
 **Why the project is useful?**<br>

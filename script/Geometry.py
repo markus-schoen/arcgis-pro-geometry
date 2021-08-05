@@ -705,6 +705,67 @@ class Geometry:
 
         else:
             arcpy.AddError("This method only works for point feature classes!")
+
+    def polyline_to_polygon(self, out_polygon):
+        """
+        Create a polygon feature class from a polyline feature (layer/class).
+        :param str out_polygon: Output feature class path for the created polygons.
+        """
+
+        polygon_list = []   # Collect polygon geometries (to create out_polygon)
+        content = []        # Collect self.feature rows (to add attributes to out_polygon)
+
+        # Get fields (from self.feature)
+        ignore_types_list = ['Geometry', 'GlobalID', 'OID']
+        fields = [x for x in arcpy.ListFields(self.feature) if x.type not in ignore_types_list]
+        fields_accepted = [x.name for x in fields]
+
+        # Collect attributes and polygons
+        for row in search_cursor(self.feature, ['SHAPE@'] + fields_accepted):
+            # Collect attributes
+            content.append(row[1:])
+
+            # Collect points (to create a polygon)
+            array = arcpy.Array()
+
+            if row[0].hasCurves:
+                # - Collect points along line (for a self defined segment length)
+                segment_length = 0.5
+                number_of_points = int(row[0].length / segment_length)
+
+                length = 0
+                for i in range(number_of_points):
+                    length += segment_length
+                    point = row[0].positionAlongLine(length)
+                    array.add(point.firstPoint)
+            else:
+                # - Collect points from the shape parts
+                for part in row[0]:
+                    for pnt in part:
+                        if pnt:
+                            array.add(arcpy.Point(pnt.X, pnt.Y))
+
+            # Create and save polygon
+            polygon = arcpy.Polygon(array)
+            polygon_list.append(polygon)
+
+        # Create out_polygon (from collected polygons)
+        arcpy.CopyFeatures_management(polygon_list, out_polygon)
+
+        # Add fields to out_polygon
+        for x in fields:
+            arcpy.AddField_management(
+                out_polygon, x.name, x.type, x.precision, x.scale, x.length, x.aliasName, x.isNullable, x.required,
+                x.domain
+            )
+
+        # Add attributes to fields
+        with update_cursor(out_polygon, fields_accepted) as cur:
+            row_counter = 0
+            for row in cur:
+                row[:] = content[row_counter]
+                cur.updateRow(row)
+                row_counter += 1
 # ---------------------------------------------------------------------------------------------------------------------
 
 
