@@ -807,8 +807,5 @@ arcpy.env.overwriteOutput = True
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    var = r"D:\Projekte\GIS\ArcGIS\Pro\WebApp\Default.gdb\Polygone"
-    var_out = r"D:\Projekte\GIS\ArcGIS\Pro\WebApp\Default.gdb\Polygone_rect"
-    geom = Geometry(var)
-    geom.hull_rectangle(var_out)
+    pass
 # ---------------------------------------------------------------------------------------------------------------------
