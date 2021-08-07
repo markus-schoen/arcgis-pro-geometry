@@ -138,6 +138,72 @@ class Geometry:
         
         return self.shape[0].spatialReference
 
+    @staticmethod
+    def __copy_missing_fields(in_feature, out_feature):
+        """
+        Copy all missing fields from an input feature to another feature class.
+
+        Hint: This is useful when copying geometry to a feature class. In this case we are missing all fields and
+        attributes.
+
+        :param str in_feature: Input feature layer/class. The fields will be copied from this feature layer/class
+        :param str out_feature: Output feature layer/class. The fields will be added to this feature class.
+        """
+
+        # Get fields (from the input feature)
+        ignore_type = ['Geometry', 'GlobalID', 'OID']
+        ignore_field = ['OBJECTID', 'Shape', 'Shape_Length', 'Shape_Area']
+
+        fields = [x for x in arcpy.ListFields(in_feature) if x.type not in ignore_type and x.name not in ignore_field]
+        fields_accepted = [x.name for x in fields]
+
+        if fields:
+            # Add fields to the output feature
+            for x in fields:
+                arcpy.AddField_management(
+                    out_feature, x.name, x.type, x.precision, x.scale, x.length, x.aliasName, x.isNullable, x.required,
+                    x.domain
+                )
+
+            # Collect attributes and polygons
+            content = list(search_cursor(in_feature, fields_accepted))
+
+            # Add attributes to fields
+            with update_cursor(out_feature, fields_accepted) as cur:
+                row_counter = 0
+                for row in cur:
+                    row[:] = content[row_counter]
+                    cur.updateRow(row)
+                    row_counter += 1
+
+            del content
+
+    @staticmethod
+    def __copy_original_oid(in_feature, out_feature, suffix=''):
+        """
+        Copy the objectid field from an input feature to an output feature.
+
+        Hint: This is useful when copying geometry to a feature class. In this case we are missing all fields and
+        attributes.
+
+        :param str in_feature: Input feature layer/class. The objectid will be copied from this feature layer/class.
+        :param str out_feature: Output feature layer/class. The objectid will be added to this feature class.
+        :param str suffix: The copied objectid fields name will be 'OID_{0}'.format(suffix).
+        The requirement is that there is a 1 to 1 relationship between the input and output features.
+        """
+
+        oid = 'OID_{0}'.format(suffix)
+        arcpy.AddField_management(out_feature, oid, 'Short')
+
+        with update_cursor(out_feature, oid) as cur:
+            oid_list = [x[0] for x in search_cursor(in_feature, 'OBJECTID')]
+
+            row_counter = 0
+            for row in cur:
+                row[0] = oid_list[row_counter]
+                cur.updateRow(row)
+                row_counter += 1
+
     def boundary(self, out_fc):
         """
         Create a boundary feature class.
@@ -150,15 +216,8 @@ class Geometry:
         boundaries = [x.boundary() for x in self.shape]
         arcpy.CopyFeatures_management(boundaries, out_fc)
 
-        # Add oid field
-        arcpy.AddField_management(out_fc, 'ORIG_FID', 'Short')
-        with update_cursor(out_fc, ['ORIG_FID']) as cur:
-            oid = [x[0] for x in search_cursor(self.feature, 'OBJECTID')]
-            row_counter = 0
-            for row in cur:
-                row[0] = oid[row_counter]
-                cur.updateRow(row)
-                row_counter += 1
+        # Copy missing fields and attributes
+        self.__copy_missing_fields(self.feature, out_fc)
 
         return out_fc
 
@@ -264,8 +323,13 @@ class Geometry:
         :return: Convex hull feature class path
         """
 
+        # Create convex hull feature class
         convex_hulls = [x.convexHull() for x in self.shape]
         arcpy.CopyFeatures_management(convex_hulls, out_fc)
+
+        # Copy missing fields and attributes
+        self.__copy_missing_fields(self.feature, out_fc)
+
         return out_fc
 
     def hull_rectangle(self, out_fc):
@@ -276,18 +340,23 @@ class Geometry:
         :return: Hull rectangle feature class path
         """
 
+        # Create convex hull feature class
         polygons = []
 
-        for rect_coordinate_list in [list(map(float, x.hullRectangle.replace(',', '.').split())) for x in self.shape]:
+        for coordinate_list in [list(map(float, x.hullRectangle.replace(',', '.').split())) for x in self.shape]:
             array = arcpy.Array()
-            for i in range(4):
-                x = rect_coordinate_list[i * 2]
-                y = rect_coordinate_list[i * 2 + 1]
+
+            for i in range(4):  # Every rectangle has four coordinate pairs
+                x = coordinate_list[i * 2]
+                y = coordinate_list[i * 2 + 1]
                 array.add(arcpy.Point(x, y))
 
             polygons.append(arcpy.Polygon(array, self.spatial_reference))
 
         arcpy.CopyFeatures_management(polygons, out_fc)
+
+        # Copy missing fields and attributes
+        self.__copy_missing_fields(self.feature, out_fc)
 
         return out_fc
 
@@ -720,18 +789,11 @@ class Geometry:
         """
 
         polygon_list = []   # Collect polygon geometries (to create out_polygon)
-        content = []        # Collect self.feature rows (to add attributes to out_polygon)
-
-        # Get fields (from self.feature)
-        ignore_types_list = ['Geometry', 'GlobalID', 'OID']
-        fields = [x for x in arcpy.ListFields(self.feature) if x.type not in ignore_types_list]
-        fields_accepted = [x.name for x in fields]
 
         # Collect attributes and polygons
-        for row in search_cursor(self.feature, ['SHAPE@'] + fields_accepted):
-            # Collect attributes
-            content.append(row[1:])
+        single_parts_feature = arcpy.MultipartToSinglepart_management(self.feature, 'memory/single_parts')
 
+        for row in search_cursor(single_parts_feature, 'SHAPE@'):
             # Collect points (to create a polygon)
             array = arcpy.Array()
 
@@ -759,20 +821,11 @@ class Geometry:
         # Create out_polygon (from collected polygons)
         arcpy.CopyFeatures_management(polygon_list, out_polygon)
 
-        # Add fields to out_polygon
-        for x in fields:
-            arcpy.AddField_management(
-                out_polygon, x.name, x.type, x.precision, x.scale, x.length, x.aliasName, x.isNullable, x.required,
-                x.domain
-            )
+        # Copy missing fields and attributes
+        self.__copy_missing_fields(single_parts_feature, out_polygon)
 
-        # Add attributes to fields
-        with update_cursor(out_polygon, fields_accepted) as cur:
-            row_counter = 0
-            for row in cur:
-                row[:] = content[row_counter]
-                cur.updateRow(row)
-                row_counter += 1
+        # Clear memory
+        arcpy.Delete_management(single_parts_feature)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
