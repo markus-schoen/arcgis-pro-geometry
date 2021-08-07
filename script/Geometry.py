@@ -590,58 +590,36 @@ class Geometry:
 
     def inner_circle(self, out_circle, out_point=None, accuracy=0.01):
         """
-        Create inner circles and centroids for the initialized polygon feature layer.
+        Create maximum inner circles and centroids for the initialized polygon feature layer.
         :param str out_circle: Feature class containing the inner circles.
         :param str out_point: Feature class containing the inner circle centroids.
         :param float accuracy: The calculation accuracy. This is needed to stop the approximation in some cases.
         """
 
-        def recursive_function(polygon, dist=0, centroids_list=None, distances_list=None):
+        def converge_to_the_center(polygon, centroids_list, distances_list):
             """
-            Calculate recursively the the maximum inner circle centroids.
-
-            Hint: The except statement only exits with an error message, because i am missing some issue cases. If you
-            have some issues feel free to contact me: https://github.com/markus-schoen/arcgis-pro-geometry/issues
+            Calculate the the maximum inner circle centroids by convergence.
 
             :param shape polygon: Polygon shape object.
-            :param float dist: Inner circle radius. The value starts with 0 and increases recursively.
             :param list centroids_list: List of inner circle centroid point geometries.
             :param list distances_list: List of inner circle radius for every inner circle centroid.
-            :rtype: float
-            :return: Inner circle radius.
             """
+
+            dist = 0
 
             while True:
                 try:
                     feature_boundary = polygon.boundary()
                     feature_centroid = polygon.centroid
 
-                    if polygon.isMultipart:
-                        multi_part = arcpy.MultipartToSinglepart_management(polygon)
-
-                        with search_cursor(multi_part, "SHAPE@") as cur:
-                            dist_list = []
-                            for ro in cur:
-                                dist_pre = recursive_function(ro[0])
-                                dist_list.append(dist_pre)
-
-                            sorted_list = sorted(dist_list, reverse=True)
-                            if sorted_list[0] != sorted_list[1]:
-                                min_dist = (sorted_list[0] + sorted_list[1])/2.0
-                            elif sorted_list[0] >= accuracy:
-                                min_dist = sorted_list[0] - accuracy
-                            else:
-                                min_dist = 0
-                    else:
-                        min_dist = feature_boundary.distanceTo(arcpy.PointGeometry(feature_centroid))
+                    point_geom = arcpy.PointGeometry(feature_centroid, self.spatial_reference)
+                    min_dist = feature_boundary.distanceTo(point_geom)
 
                     dist += min_dist
 
-                    if min_dist <= accuracy:
-                        if centroids_list is not None:
-                            centroids_list.append(arcpy.PointGeometry(feature_centroid, self.spatial_reference))
-                        if distances_list is not None:
-                            distances_list.append(dist)
+                    if min_dist <= accuracy or shape.pointCount is 2:
+                        centroids_list.append(point_geom)
+                        distances_list.append(dist)
                         break
 
                     polygon = polygon.buffer(float("-{0}".format(min_dist)))
@@ -650,19 +628,21 @@ class Geometry:
                     arcpy.AddMessage(e)
                     break
 
-            return dist
+        delete_list = []
 
-        # Calculate inner circle centroids
-        distance = 0
+        # Calculate inner circle centroids and radius
+        shapes = arcpy.MultipartToSinglepart_management(self.feature, arcpy.Geometry())
+
         centroid_list = []
         distance_list = []
-        for shape in self.shape:
-            recursive_function(shape, distance, centroids_list=centroid_list, distances_list=distance_list)
-            distance = 0
+
+        for shape in shapes:
+            converge_to_the_center(shape, centroid_list, distance_list)
 
         # Create inner circle centroid feature class
         if out_point is None:
             out_point = 'memory/out_point'
+            delete_list.append(out_point)
 
         arcpy.CopyFeatures_management(centroid_list, out_point)
 
@@ -677,6 +657,10 @@ class Geometry:
 
         # Create inner circle feature class:
         arcpy.Buffer_analysis(out_point, out_circle, 'radius')
+
+        # Clear memory
+        for element in delete_list:
+            arcpy.DeleteField_management(element)
 
     def numerate(self, sort_by='top_left', field_name='id'):
         """
