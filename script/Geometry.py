@@ -221,6 +221,23 @@ class Geometry:
 
         return out_fc
 
+    def extent(self, out_fc):
+        """
+        Create an extent feature class.
+        :param str out_fc: Path for the extent feature class.
+        :rtype: str
+        :return: Extent feature class path
+        """
+
+        # Create boundary feature class
+        extents = [x.extent.polygon for x in self.shape]
+        arcpy.CopyFeatures_management(extents, out_fc)
+
+        # Copy missing fields and attributes
+        self.__copy_missing_fields(self.feature, out_fc)
+
+        return out_fc
+
     def circle_from_three_points(self, out_circle_feature_class, out_circle_centroid_feature_class=None):
         """
         For a given point feature layer, every three point features will be taken to create a circle:
