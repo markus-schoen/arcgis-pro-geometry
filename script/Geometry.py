@@ -820,7 +820,7 @@ class Geometry:
                 number_of_points = int(row[0].length / segment_length)
 
                 length = 0
-                for i in range(number_of_points):
+                for i in range(number_of_points + 1):
                     length += segment_length
                     point = row[0].positionAlongLine(length)
                     array.add(point.firstPoint)
@@ -843,6 +843,53 @@ class Geometry:
 
         # Clear memory
         arcpy.Delete_management(single_parts_feature)
+
+    '''
+    def position_along_line(self, out_fc, distance, use_percentage=False):
+        points = [x.positionAlongLine(distance, use_percentage) for x in self.shape]
+        arcpy.CopyFeatures_management(points, out_fc)
+    '''
+
+    def points_along_feature(self, out_fc, distance=0.5):
+        """
+        Creates points along a polyline or polygon feature (layer/class) for a selected distance.
+        One multipoint is created for each feature.
+
+        :param str out_fc: Output feature class path for the created multipoints.
+        :param float distance: Distance between each following point.
+        """
+
+        # Get lines
+        if self.shape_type == 'polygon':
+            shapes = [x.boundary() for x in self.shape]
+        elif self.shape_type == 'polyline':
+            shapes = self.shape
+        else:
+            shapes = None
+
+        # Create out_fc
+        if shapes:
+            point_list = []
+
+            # Create multipoints (for every shape)
+            for shape in shapes:
+                array = arcpy.Array()
+
+                length = 0
+                number_of_points = int(shape.length / distance)
+
+                for i in range(number_of_points + 1):
+                    length += distance
+                    point_geometry = shape.positionAlongLine(length)
+                    centroid = point_geometry.centroid
+                    array.add(centroid)
+
+                if array:
+                    point_list.append(arcpy.Multipoint(array))
+
+            # Create out_fc (from collected multipoints)
+            if point_list:
+                arcpy.CopyFeatures_management(point_list, out_fc)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
