@@ -192,7 +192,7 @@ class Geometry:
         The requirement is that there is a 1 to 1 relationship between the input and output features.
         """
 
-        oid = 'OID_{0}'.format(suffix)
+        oid = '_'.join([x for x in ['OID', suffix] if x])
         arcpy.AddField_management(out_feature, oid, 'Short')
 
         with update_cursor(out_feature, oid) as cur:
