@@ -192,7 +192,7 @@ class Geometry:
         The requirement is that there is a 1 to 1 relationship between the input and output features.
         """
 
-        oid = 'OID_{0}'.format(suffix)
+        oid = '_'.join([x for x in ['OID', suffix] if x])
         arcpy.AddField_management(out_feature, oid, 'Short')
 
         with update_cursor(out_feature, oid) as cur:
@@ -215,6 +215,23 @@ class Geometry:
         # Create boundary feature class
         boundaries = [x.boundary() for x in self.shape]
         arcpy.CopyFeatures_management(boundaries, out_fc)
+
+        # Copy missing fields and attributes
+        self.__copy_missing_fields(self.feature, out_fc)
+
+        return out_fc
+
+    def extent(self, out_fc):
+        """
+        Create an extent feature class.
+        :param str out_fc: Path for the extent feature class.
+        :rtype: str
+        :return: Extent feature class path
+        """
+
+        # Create boundary feature class
+        extents = [x.extent.polygon for x in self.shape]
+        arcpy.CopyFeatures_management(extents, out_fc)
 
         # Copy missing fields and attributes
         self.__copy_missing_fields(self.feature, out_fc)
