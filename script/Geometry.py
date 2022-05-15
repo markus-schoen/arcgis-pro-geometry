@@ -35,6 +35,7 @@
 
 # MODULES -------------------------------------------------------------------------------------------------------------
 import arcpy
+import json
 import numpy as np
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -799,7 +800,7 @@ class Geometry:
         else:
             arcpy.AddError("This method only works for point feature classes!")
 
-    def polyline_to_polygon(self, out_polygon):
+    def __polyline_to_polygon_old(self, out_polygon):
         """
         Create a polygon feature class from a polyline feature (layer/class).
         :param str out_polygon: Output feature class path for the created polygons.
@@ -843,6 +844,43 @@ class Geometry:
 
         # Clear memory
         arcpy.Delete_management(single_parts_feature)
+
+    def polyline_to_polygon(self, out_polygon):
+        """
+        Create a polygon feature class from a polyline feature (layer/class).
+        We keep the original spatial reference.
+
+        :param str out_polygon: Output polygon feature class path.
+        """
+
+        # Get feature set dictionary
+        # https://developers.arcgis.com/documentation/common-data-types/featureset-object.htm
+        feature_set = arcpy.FeatureSet()
+        feature_set.load(self.feature)
+
+        # Edit feature set
+        dictionary = json.loads(feature_set.JSON)
+
+        # - Set geometry type
+        dictionary['geometryType'] = 'esriGeometryPolygon'
+
+        # - Set array types
+        json_dump = json.dumps(dictionary)  # Create string from dictionary
+
+        array_types = {'curvePaths': 'curveRings', 'paths': 'rings'}
+        for array_type in array_types:
+            json_dump = json_dump.replace(array_type, array_types[array_type])
+
+        # Save edited feature set to a polygon feature class
+        try:
+            fs = arcpy.FeatureSet()
+            fs.load(json_dump)
+            arcpy.CopyFeatures_management(fs, out_polygon)
+        except AttributeError as e:
+            arcpy.AddWarning(f'Spatial reference: {dictionary["spatialReference"]}')
+            arcpy.AddError(f"Attribute Error:\nThe coordinates doesn't match the coordinate system\n\nOriginal:\n{e}")
+        except Exception as e:
+            arcpy.AddError(e)
 
     '''
     def position_along_line(self, out_fc, distance, use_percentage=False):
