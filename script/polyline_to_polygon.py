@@ -72,12 +72,13 @@ out_fc = os.path.join(out_fc_gdb, out_fc_name)
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
 # Create polygon
 with Geometry(fc) as fc_geom:
-    fc_geom.polyline_to_polygon(out_fc)
+    out_fc = fc_geom.polyline_to_polygon(out_fc)
 
 # Add polygon to map
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
+if out_fc:
+    project = arcpy.mp.ArcGISProject("CURRENT")
+    active_map = project.activeMap
 
-if active_map:
-    in_layer_out_fc = active_map.addDataFromPath(out_fc)
+    if active_map:
+        in_layer_out_fc = active_map.addDataFromPath(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------

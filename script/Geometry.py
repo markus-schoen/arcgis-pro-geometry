@@ -800,7 +800,8 @@ class Geometry:
         else:
             arcpy.AddError("This method only works for point feature classes!")
 
-    def __polyline_to_polygon_old(self, out_polygon):
+    '''
+    def polyline_to_polygon_old(self, out_polygon):
         """
         Create a polygon feature class from a polyline feature (layer/class).
         :param str out_polygon: Output feature class path for the created polygons.
@@ -844,6 +845,7 @@ class Geometry:
 
         # Clear memory
         arcpy.Delete_management(single_parts_feature)
+    '''
 
     def polyline_to_polygon(self, out_polygon):
         """
@@ -851,16 +853,18 @@ class Geometry:
         We keep the original spatial reference.
 
         :param str out_polygon: Output polygon feature class path.
+
+        :rtype: str
+        :return: Output polygon feature class path.
         """
 
         # Get feature set dictionary
         # https://developers.arcgis.com/documentation/common-data-types/featureset-object.htm
         feature_set = arcpy.FeatureSet()
         feature_set.load(self.feature)
-
-        # Edit feature set
         dictionary = json.loads(feature_set.JSON)
 
+        # Edit feature set dictionary
         # - Set geometry type
         dictionary['geometryType'] = 'esriGeometryPolygon'
 
@@ -871,16 +875,20 @@ class Geometry:
         for array_type in array_types:
             json_dump = json_dump.replace(array_type, array_types[array_type])
 
-        # Save edited feature set to a polygon feature class
+        # Save edited feature set dictionary to a polygon feature class
         try:
             fs = arcpy.FeatureSet()
             fs.load(json_dump)
             arcpy.CopyFeatures_management(fs, out_polygon)
         except AttributeError as e:
             arcpy.AddWarning(f'Spatial reference: {dictionary["spatialReference"]}')
-            arcpy.AddError(f"Attribute Error:\nThe coordinates doesn't match the coordinate system\n\nOriginal:\n{e}")
+            arcpy.AddWarning(f"Attribute Error:\nThe coordinates doesn't match the coordinate system\n\nOriginal:\n{e}")
+            out_polygon = ''
         except Exception as e:
-            arcpy.AddError(e)
+            arcpy.AddWarning(e)
+            out_polygon = ''
+
+        return out_polygon
 
     '''
     def position_along_line(self, out_fc, distance, use_percentage=False):
