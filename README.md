@@ -31,9 +31,10 @@ You can use the class 'Geometry' from the script '.script\Geometry.py' in other 
 
 
 **Requirements?**<br>
-- ArcGIS Pro 2.8.1+
+- ArcGIS Pro 2.9.2+
 - Frameworks:
     - arcpy
+    - json
     - numpy
     - os
     - sys
