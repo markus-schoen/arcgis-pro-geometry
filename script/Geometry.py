@@ -25,6 +25,8 @@
 # Thanks to all developers who created the used modules.
 # Thanks to FelixIP and BERA from gis.stackexchange.com for the inspiration:
 # - https://gis.stackexchange.com/questions/286439/need-tool-for-arcmap-to-draw-circle-touching-three-points
+# Thanks to Curtis Price for the rotation inspiration:
+# - https://github.com/usgs/arcgis-sample/blob/master/scripts/RotateFeatureClass.py
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -35,7 +37,9 @@
 
 # MODULES -------------------------------------------------------------------------------------------------------------
 import arcpy
+from copy import deepcopy
 import json
+import math
 import numpy as np
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -936,6 +940,211 @@ class Geometry:
             # Create out_fc (from collected multipoints)
             if point_list:
                 arcpy.CopyFeatures_management(point_list, out_fc)
+
+    @staticmethod
+    def rotate_xy(x, y, x_cnt=0, y_cnt=0, rotation_angle=0):
+        """
+        Rotate x, y values bye center point coordinates x_cnt, y_cnt and a rotation angle.
+
+        # Thanks to Curtis Price for the rotation inspiration:
+        # - https://github.com/usgs/arcgis-sample/blob/master/scripts/RotateFeatureClass.py
+
+        :param float x: X value to be rotated.
+        :param float y: Y value to be rotated.
+        :param float x_cnt: X value around which to rotate. (x_cnt = abbreviation for 'x center').
+        :param float y_cnt: Y value around which to rotate. (y_cnt = abbreviation for 'y center').
+        :param float rotation_angle: Number of degrees with which to rotate.
+
+        :rtype: list
+        :return: List [x, y] with rotated xy values.
+        """
+
+        # Move x, y to the origin (First we wan't to rotate through the coordinate origin and then we move back)
+        x = x - x_cnt
+        y = y - y_cnt
+
+        # Get angle radian (clockwise rotation)
+        rotation_angle = -1 * rotation_angle  # Factor -1 means clockwise rotation
+        rotation_angle = math.radians(rotation_angle)
+
+        # Rotate x, y through the coordinate origin (and then move back)
+        x_rot = (x * math.cos(rotation_angle)) - (y * math.sin(rotation_angle)) + x_cnt
+        y_rot = (x * math.sin(rotation_angle)) + (y * math.cos(rotation_angle)) + y_cnt
+
+        return x_rot, y_rot
+
+    def rotate_fc(self, out_feature, rotation_angle, rotation_value='xy', rotation_x=None, rotation_y=None):
+        """
+        Rotate an input feature class. Curves will be respected.
+
+        :param str out_feature:
+        :param float rotation_angle:
+        :param str rotation_value:
+            - 'xy':
+               Use the values 'rotation_x' and 'rotation_y' for rotation.
+            - 'in_feature_centroid':
+               For every feature, the features centroid will be used for rotation. The tool acts like handling single
+               part features.
+            - 'in_feature_true_centroid':
+               For every feature, the features true centroid will be used for rotation. The tool acts like handling
+               single part features.
+        :param float rotation_x: (Optional) X value around which to rotate. This value will only be used in case of 
+        rotation_value = 'xy'.
+        :param float rotation_y: (Optional) Y value around which to rotate. This value will only be used in case of 
+        rotation_value = 'xy'.
+        
+        :rtype: str
+        :return: Output feature class path.
+        """
+
+        # Preparation
+        # - Check output feature
+        if out_feature != self.__desc.catalogPath:
+            arcpy.CopyFeatures_management(self.feature, out_feature)
+
+        # - Ensure, rotation angle < 360°
+        rotation_angle = int(rotation_angle) % 360 + (rotation_angle - int(rotation_angle))
+
+        # - Feature rotation centroids - For centroid rotations
+        in_feature_centroid_list = []
+
+        # - Check rotation value - Collect rotation centroids in case rotation_value != 'xy'
+        if rotation_value != 'xy':
+            feature_mem = 'memory/feature_single_parts'
+
+            arcpy.MultipartToSinglepart_management(out_feature, feature_mem)
+            with search_cursor(feature_mem, 'SHAPE@') as cur:
+                for row in cur:
+                    if rotation_value == 'in_feature_centroid':
+                        in_feature_centroid_list.append(row[0].centroid)
+                    elif rotation_value == 'in_feature_true_centroid':
+                        in_feature_centroid_list.append(row[0].trueCentroid)
+                    else:
+                        arcpy.AddError('Missing rotation type!')
+
+            arcpy.Delete_management(feature_mem)
+
+        # Rotation
+        with update_cursor(out_feature, 'SHAPE@JSON') as cur:
+            cnt_in_feature_centroid = 0
+
+            for row in cur:
+                if row[0] is None:
+                    continue
+
+                row_dict = json.loads(row[0])
+
+                # Points
+                if row_dict.get('x'):
+                    # x, y, z
+                    # - Get x, y values
+                    x = row_dict['x']
+                    y = row_dict['y']
+
+                    # - Rotate x, y values
+                    x_rot, y_rot = self.rotate_xy(x, y, rotation_x, rotation_y, rotation_angle)
+
+                    # - Update x, y values
+                    row_dict['x'] = x_rot
+                    row_dict['y'] = y_rot
+
+                # MultiPoints
+                key = 'points'
+                if row_dict.get(key):
+                    cnt_1 = 0
+                    for value_list in row_dict[key]:
+
+                        if rotation_value == 'xy':
+                            # - Get x, y values
+                            x = value_list[0]
+                            y = value_list[1]
+
+                            # - Rotate x, y values
+                            x_rot, y_rot = self.rotate_xy(x, y, rotation_x, rotation_y, rotation_angle)
+
+                            # - Update x, y values
+                            value_list[0] = x_rot
+                            value_list[1] = y_rot
+
+                            # - Update row_dict dictionary
+                            row_dict[key][cnt_1] = value_list
+                        else:
+                            # Centroid rotation - Points do not have to be rotated around themselves.
+                            pass
+
+                        cnt_1 += 1
+
+                # Polylines & Polygons
+                for key in ['paths', 'rings', 'curveRings', 'curvePaths']:
+                    if row_dict.get(key):
+                        # Hint: type(row_dict[key]) == list
+
+                        cnt_1 = 0  # Save value_list index position within the list 'row_dict[key]'.
+                        for value_list in row_dict[key]:
+                            # Hint: type(value_list) == list
+
+                            # Check rotation_value - edit rotation_x/y in case of a centroid rotation
+                            if rotation_value != 'xy':
+                                rotation_x = in_feature_centroid_list[cnt_in_feature_centroid].X
+                                rotation_y = in_feature_centroid_list[cnt_in_feature_centroid].Y
+                                cnt_in_feature_centroid += 1
+
+                            cnt_2 = 0  # Save element index position within the list 'value_list'.
+                            for element in value_list:
+                                # Hint: type(element) in [list, dict]
+
+                                if type(element) is list:
+                                    # key in ['paths', 'rings']
+                                    # - Get x, y values
+                                    x = element[0]
+                                    y = element[1]
+
+                                    # - Rotate x, y values
+                                    x_rot, y_rot = self.rotate_xy(x, y, rotation_x, rotation_y, rotation_angle)
+
+                                    # - Update x, y values
+                                    element[0] = x_rot
+                                    element[1] = y_rot
+
+                                    # - Update row_dict dictionary
+                                    row_dict[key][cnt_1][cnt_2] = element
+
+                                elif type(element) is dict:
+                                    # key in ['curveRings', 'curvePaths']
+                                    for sub_key in element:
+                                        cnt_3 = 0  # Save sub_value index position within the list 'element[sub_key]'
+                                        for sub_value in element[sub_key]:
+                                            # Hint: type(sub_value) in [list, int, float]
+
+                                            if type(sub_value) == list:
+                                                # - Get x, y values
+                                                x = sub_value[0]
+                                                y = sub_value[1]
+
+                                                # - Rotate x, y values
+                                                x_rot, y_rot = self.rotate_xy(
+                                                    x, y, rotation_x, rotation_y, rotation_angle
+                                                )
+
+                                                # - Update x, y values
+                                                sub_value[0] = x_rot
+                                                sub_value[1] = y_rot
+
+                                                # - Update row_dict dictionary
+                                                row_dict[key][cnt_1][cnt_2][sub_key][cnt_3] = sub_value
+                                            elif type(sub_value) in (int, float):
+                                                pass
+                                            else:
+                                                arcpy.AddWarning(sub_value)
+                                            cnt_3 += 1
+                                cnt_2 += 1
+                            cnt_1 += 1
+
+                # Save edits
+                row[0] = json.dumps(row_dict)
+                cur.updateRow(row)
+
+        return out_feature
 # ---------------------------------------------------------------------------------------------------------------------
 
 

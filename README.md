@@ -14,6 +14,7 @@ Within the toolbox 'Toolbox.tbx' you find several tools to edit and calculate ge
 - Numerate: Sort any feature and create a field for the sort range.
 - Points Along Feature: Create points along a polyline or polygon feature (layer/class) for a selected distance.
 - Polyline To Polygon: Create a polygon feature class from a polyline feature (layer/class).
+- Rotate: Rotate a feature class by different rotation methods (layer/class).
 
 
 **Why the project is useful?**<br>
@@ -34,6 +35,7 @@ You can use the class 'Geometry' from the script '.script\Geometry.py' in other 
 - ArcGIS Pro 2.9.2+
 - Frameworks:
     - arcpy
+    - copy
     - json
     - numpy
     - os
