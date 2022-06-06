@@ -46,7 +46,6 @@ import numpy as np
 
 # GENERAL INFORMATION -------------------------------------------------------------------------------------------------
 __author__ = 'Markus Schön'
-__version__ = '1.0.0'
 __copyright__ = 'Copyright 2021 by Markus Schön'
 __license__ = 'Apache License, Version 2.0'
 # ---------------------------------------------------------------------------------------------------------------------
@@ -182,32 +181,6 @@ class Geometry:
                     row_counter += 1
 
             del content
-
-    @staticmethod
-    def __copy_original_oid(in_feature, out_feature, suffix=''):
-        """
-        Copy the objectid field from an input feature to an output feature.
-
-        Hint: This is useful when copying geometry to a feature class. In this case we are missing all fields and
-        attributes.
-
-        :param str in_feature: Input feature layer/class. The objectid will be copied from this feature layer/class.
-        :param str out_feature: Output feature layer/class. The objectid will be added to this feature class.
-        :param str suffix: The copied objectid fields name will be 'OID_{0}'.format(suffix).
-        The requirement is that there is a 1 to 1 relationship between the input and output features.
-        """
-
-        oid = '_'.join([x for x in ['OID', suffix] if x])
-        arcpy.AddField_management(out_feature, oid, 'Short')
-
-        with update_cursor(out_feature, oid) as cur:
-            oid_list = [x[0] for x in search_cursor(in_feature, 'OBJECTID')]
-
-            row_counter = 0
-            for row in cur:
-                row[0] = oid_list[row_counter]
-                cur.updateRow(row)
-                row_counter += 1
 
     def boundary(self, out_fc):
         """
@@ -804,53 +777,6 @@ class Geometry:
         else:
             arcpy.AddError("This method only works for point feature classes!")
 
-    '''
-    def polyline_to_polygon_old(self, out_polygon):
-        """
-        Create a polygon feature class from a polyline feature (layer/class).
-        :param str out_polygon: Output feature class path for the created polygons.
-        """
-
-        polygon_list = []   # Collect polygon geometries (to create out_polygon)
-
-        # Collect attributes and polygons
-        single_parts_feature = arcpy.MultipartToSinglepart_management(self.feature, 'memory/single_parts')
-
-        for row in search_cursor(single_parts_feature, 'SHAPE@'):
-            # Collect points (to create a polygon)
-            array = arcpy.Array()
-
-            if row[0].hasCurves:
-                # - Collect points along line (for a self defined segment length)
-                segment_length = 0.5
-                number_of_points = int(row[0].length / segment_length)
-
-                length = 0
-                for i in range(number_of_points + 1):
-                    length += segment_length
-                    point = row[0].positionAlongLine(length)
-                    array.add(point.firstPoint)
-            else:
-                # - Collect points from the shape parts
-                for part in row[0]:
-                    for pnt in part:
-                        if pnt:
-                            array.add(arcpy.Point(pnt.X, pnt.Y))
-
-            # Create and save polygon
-            polygon = arcpy.Polygon(array, self.spatial_reference)
-            polygon_list.append(polygon)
-
-        # Create out_polygon (from collected polygons)
-        arcpy.CopyFeatures_management(polygon_list, out_polygon)
-
-        # Copy missing fields and attributes
-        self.__copy_missing_fields(single_parts_feature, out_polygon)
-
-        # Clear memory
-        arcpy.Delete_management(single_parts_feature)
-    '''
-
     def polyline_to_polygon(self, out_polygon):
         """
         Create a polygon feature class from a polyline feature (layer/class).
@@ -894,12 +820,6 @@ class Geometry:
 
         return out_polygon
 
-    '''
-    def position_along_line(self, out_fc, distance, use_percentage=False):
-        points = [x.positionAlongLine(distance, use_percentage) for x in self.shape]
-        arcpy.CopyFeatures_management(points, out_fc)
-    '''
-
     def points_along_feature(self, out_fc, distance=0.5):
         """
         Creates points along a polyline or polygon feature (layer/class) for a selected distance.
@@ -942,7 +862,7 @@ class Geometry:
                 arcpy.CopyFeatures_management(point_list, out_fc)
 
     @staticmethod
-    def rotate_xy(x, y, x_cnt=0, y_cnt=0, rotation_angle=0):
+    def rotate_xy(x, y, rotation_angle=0, x_cnt=0, y_cnt=0):
         """
         Rotate x, y values bye center point coordinates x_cnt, y_cnt and a rotation angle.
 
@@ -951,17 +871,17 @@ class Geometry:
 
         :param float x: X value to be rotated.
         :param float y: Y value to be rotated.
+        :param float rotation_angle: Number of degrees with which to rotate.
         :param float x_cnt: X value around which to rotate. (x_cnt = abbreviation for 'x center').
         :param float y_cnt: Y value around which to rotate. (y_cnt = abbreviation for 'y center').
-        :param float rotation_angle: Number of degrees with which to rotate.
 
         :rtype: list
         :return: List [x, y] with rotated xy values.
         """
 
         # Move x, y to the origin (First we wan't to rotate through the coordinate origin and then we move back)
-        x = x - x_cnt
-        y = y - y_cnt
+        x -= x_cnt
+        y -= y_cnt
 
         # Get angle radian (clockwise rotation)
         rotation_angle = -1 * rotation_angle  # Factor -1 means clockwise rotation
@@ -973,12 +893,11 @@ class Geometry:
 
         return x_rot, y_rot
 
-    def rotate_fc(self, out_feature, rotation_angle, rotation_value='xy', rotation_x=None, rotation_y=None):
+    def rotate_fc(self, out_feature, rotation_value='xy', rotation_angle=0, rotation_x=None, rotation_y=None):
         """
         Rotate an input feature class. Curves will be respected.
 
-        :param str out_feature:
-        :param float rotation_angle:
+        :param str out_feature: Output feature class path.
         :param str rotation_value:
             - 'xy':
                Use the values 'rotation_x' and 'rotation_y' for rotation.
@@ -988,6 +907,7 @@ class Geometry:
             - 'in_feature_true_centroid':
                For every feature, the features true centroid will be used for rotation. The tool acts like handling
                single part features.
+        :param float rotation_angle: Input rotation value.
         :param float rotation_x: (Optional) X value around which to rotate. This value will only be used in case of 
         rotation_value = 'xy'.
         :param float rotation_y: (Optional) Y value around which to rotate. This value will only be used in case of 
@@ -998,21 +918,27 @@ class Geometry:
         """
 
         # Preparation
-        # - Check output feature
+        # - Output feature
         if out_feature != self.__desc.catalogPath:
             arcpy.CopyFeatures_management(self.feature, out_feature)
+
+        # - Check shape_type
+        if self.shape_type in ['point', 'multipoint']:
+            if rotation_value in ['in_feature_centroid', 'in_feature_true_centroid']:
+                # Centroid rotation - Points do not have to be rotated around themselves.
+                return out_feature
 
         # - Ensure, rotation angle < 360°
         rotation_angle = int(rotation_angle) % 360 + (rotation_angle - int(rotation_angle))
 
-        # - Feature rotation centroids - For centroid rotations
-        in_feature_centroid_list = []
+        # - Check rotation value
+        #   Collect rotation centroids in case rotation_value != 'xy'
+        in_feature_centroid_list = []  # Feature rotation centroids
 
-        # - Check rotation value - Collect rotation centroids in case rotation_value != 'xy'
         if rotation_value != 'xy':
             feature_mem = 'memory/feature_single_parts'
-
             arcpy.MultipartToSinglepart_management(out_feature, feature_mem)
+
             with search_cursor(feature_mem, 'SHAPE@') as cur:
                 for row in cur:
                     if rotation_value == 'in_feature_centroid':
@@ -1030,91 +956,89 @@ class Geometry:
 
             for row in cur:
                 if row[0] is None:
+                    # - Can't rotate NoneType values
                     continue
 
                 row_dict = json.loads(row[0])
 
-                # Points
+                # - Points
                 if row_dict.get('x'):
-                    # x, y, z
-                    # - Get x, y values
+                    # - - Hint: type(row_dict['x']) == float
+                    # - - Get x, y values
                     x = row_dict['x']
                     y = row_dict['y']
 
-                    # - Rotate x, y values
-                    x_rot, y_rot = self.rotate_xy(x, y, rotation_x, rotation_y, rotation_angle)
+                    # - - Rotate x, y values
+                    x_rot, y_rot = self.rotate_xy(x, y, rotation_angle, rotation_x, rotation_y)
 
-                    # - Update x, y values
+                    # - - Update x, y values
                     row_dict['x'] = x_rot
                     row_dict['y'] = y_rot
 
-                # MultiPoints
-                key = 'points'
-                if row_dict.get(key):
-                    cnt_1 = 0
-                    for value_list in row_dict[key]:
+                # - MultiPoints
+                for key in ['points']:
+                    if row_dict.get(key):
+                        # - - Hint: type(row_dict[key]) == list
 
-                        if rotation_value == 'xy':
+                        cnt_1 = 0  # Save value_list index position within the list 'row_dict[key]'.
+                        for value_list in row_dict[key]:
+                            # - - Hint: type(value_list) == list
                             # - Get x, y values
                             x = value_list[0]
                             y = value_list[1]
 
                             # - Rotate x, y values
-                            x_rot, y_rot = self.rotate_xy(x, y, rotation_x, rotation_y, rotation_angle)
+                            x_rot, y_rot = self.rotate_xy(x, y, rotation_angle, rotation_x, rotation_y)
 
                             # - Update x, y values
                             value_list[0] = x_rot
                             value_list[1] = y_rot
 
-                            # - Update row_dict dictionary
+                            # - - Update row_dict dictionary
                             row_dict[key][cnt_1] = value_list
-                        else:
-                            # Centroid rotation - Points do not have to be rotated around themselves.
-                            pass
+                            cnt_1 += 1
 
-                        cnt_1 += 1
-
-                # Polylines & Polygons
+                # - Polylines & Polygons
                 for key in ['paths', 'rings', 'curveRings', 'curvePaths']:
                     if row_dict.get(key):
-                        # Hint: type(row_dict[key]) == list
+                        # - - Hint: type(row_dict[key]) == list
 
                         cnt_1 = 0  # Save value_list index position within the list 'row_dict[key]'.
                         for value_list in row_dict[key]:
-                            # Hint: type(value_list) == list
-
-                            # Check rotation_value - edit rotation_x/y in case of a centroid rotation
+                            # - - Hint: type(value_list) == list
+                            # - - Check rotation_value - edit rotation_x/y in case of a centroid rotation
                             if rotation_value != 'xy':
                                 rotation_x = in_feature_centroid_list[cnt_in_feature_centroid].X
                                 rotation_y = in_feature_centroid_list[cnt_in_feature_centroid].Y
                                 cnt_in_feature_centroid += 1
 
-                            cnt_2 = 0  # Save element index position within the list 'value_list'.
-                            for element in value_list:
-                                # Hint: type(element) in [list, dict]
+                            cnt_2 = 0  # Save iterable index position within the list 'value_list'.
+                            for iterable in value_list:
+                                # - - Hint: type(iterable) in [list, dict]
 
-                                if type(element) is list:
-                                    # key in ['paths', 'rings']
+                                if type(iterable) is list:
+                                    # - - key in ['paths', 'rings']
                                     # - Get x, y values
-                                    x = element[0]
-                                    y = element[1]
+                                    x = iterable[0]
+                                    y = iterable[1]
 
                                     # - Rotate x, y values
-                                    x_rot, y_rot = self.rotate_xy(x, y, rotation_x, rotation_y, rotation_angle)
+                                    x_rot, y_rot = self.rotate_xy(x, y, rotation_angle, rotation_x, rotation_y)
 
                                     # - Update x, y values
-                                    element[0] = x_rot
-                                    element[1] = y_rot
+                                    iterable[0] = x_rot
+                                    iterable[1] = y_rot
 
-                                    # - Update row_dict dictionary
-                                    row_dict[key][cnt_1][cnt_2] = element
+                                    # - - Update row_dict dictionary
+                                    row_dict[key][cnt_1][cnt_2] = iterable
 
-                                elif type(element) is dict:
-                                    # key in ['curveRings', 'curvePaths']
-                                    for sub_key in element:
-                                        cnt_3 = 0  # Save sub_value index position within the list 'element[sub_key]'
-                                        for sub_value in element[sub_key]:
-                                            # Hint: type(sub_value) in [list, int, float]
+                                elif type(iterable) is dict:
+                                    # - - key in ['curveRings', 'curvePaths']
+
+                                    for sub_key in iterable:
+                                        cnt_3 = 0  # - - Save sub_value index position within the list iterable[sub_key]
+                                        for sub_value in iterable[sub_key]:
+                                            # - - Hint: type(sub_value) in [list, int, float]
 
                                             if type(sub_value) == list:
                                                 # - Get x, y values
@@ -1123,24 +1047,26 @@ class Geometry:
 
                                                 # - Rotate x, y values
                                                 x_rot, y_rot = self.rotate_xy(
-                                                    x, y, rotation_x, rotation_y, rotation_angle
+                                                    x, y, rotation_angle, rotation_x, rotation_y
                                                 )
 
                                                 # - Update x, y values
                                                 sub_value[0] = x_rot
                                                 sub_value[1] = y_rot
 
-                                                # - Update row_dict dictionary
+                                                # - - Update row_dict dictionary
                                                 row_dict[key][cnt_1][cnt_2][sub_key][cnt_3] = sub_value
+
                                             elif type(sub_value) in (int, float):
                                                 pass
+
                                             else:
                                                 arcpy.AddWarning(sub_value)
                                             cnt_3 += 1
                                 cnt_2 += 1
                             cnt_1 += 1
 
-                # Save edits
+                # - Save edits
                 row[0] = json.dumps(row_dict)
                 cur.updateRow(row)
 

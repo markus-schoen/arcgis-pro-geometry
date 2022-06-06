@@ -52,7 +52,7 @@ out_fc_name = arcpy.GetParameterAsText(2)
 rotation_angle = arcpy.GetParameter(3)
 rotation_method = arcpy.GetParameterAsText(4)
 # Hint: rotation_method in
-# ['coordinates', 'extent_middle_point', 'point feature', 'in_feature_centroid', 'in_feature_true_centroid']
+# ['coordinates', 'extent_middle_point', 'point_feature', 'in_feature_centroid', 'in_feature_true_centroid']
 feature_layer = arcpy.GetParameterAsText(5)
 point_feature_layer = arcpy.GetParameterAsText(6)
 rotation_x = arcpy.GetParameter(7)
@@ -89,7 +89,7 @@ else:
 
 # Rotate
 with Geometry(fc) as fc_geom:
-    out_fc = fc_geom.rotate_fc(out_fc, rotation_angle, rotation_type, rotation_x, rotation_y)
+    out_fc = fc_geom.rotate_fc(out_fc, rotation_type, rotation_angle, rotation_x, rotation_y)
 
 # Add out_fc to the current active map
 if out_fc:

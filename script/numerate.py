@@ -39,7 +39,6 @@ from Geometry import Geometry
 
 # GENERAL INFORMATION -------------------------------------------------------------------------------------------------
 __author__ = 'Markus Schön'
-__version__ = '1.0.0'
 __copyright__ = 'Copyright 2021 by Markus Schön'
 __license__ = 'Apache License, Version 2.0'
 # ---------------------------------------------------------------------------------------------------------------------
