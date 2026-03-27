@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "arcgis-pro-geometry"
+version = "1.0.0"
+description = "A collection of geometry tools for ArcGIS Pro"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Markus Schön" }]
+requires-python = ">=3.9"
+
+# Note: arcpy and numpy are provided by the ArcGIS Pro installation (conda).
+# They are not available on PyPI and cannot be listed as pip dependencies.
+
+[tool.setuptools.packages.find]
+where = ["src"]

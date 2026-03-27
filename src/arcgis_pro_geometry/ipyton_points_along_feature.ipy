@@ -1,0 +1,57 @@
+# SCRIPT --------------------------------------------------------------------------------------------------------------
+# This script compares the running times for the methods 'arcpy.GeneratePointsAlongLines_management' and
+# 'Geometry().points_along_feature'.
+#
+# Reason:
+# If the running time for the method 'Geometry().points_along_feature' is faster, using this method could be useful.
+#
+# Hint:
+# The script 'Geometry().points_along_feature' has less functionality but seems to be faster. You can't set the distance
+# units. You aren't able to use percentages at the moment.
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# MODULES -------------------------------------------------------------------------------------------------------------
+import os
+from pathlib import Path
+
+import arcpy
+
+from Geometry import Geometry
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# ENVIRONMENTAL SETTINGS ----------------------------------------------------------------------------------------------
+arcpy.env.overwriteOutput = True
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# PATHS ---------------------------------------------------------------------------------------------------------------
+folder_tool = Path(__file__).parents[2]
+folder_testdata = os.path.join(folder_tool, 'data', '_testdata')
+
+gdb_data = os.path.join(folder_testdata, 'data.gdb')
+dataset_results_test = os.path.join(folder_testdata, 'results_test.gdb', 'points_along_feature')
+
+line = os.path.join(gdb_data, 'Line')
+line_points = os.path.join(dataset_results_test, 'Line_points')
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# PREPARATION ---------------------------------------------------------------------------------------------------------
+print("\nCompare running times for 'arcpy.GeneratePointsAlongLines_management' and 'Geometry().points_along_feature':")
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# MAIN PROGRAM --------------------------------------------------------------------------------------------------------
+print("\nRunning time for 'arcpy.GeneratePointsAlongLines_management' [distance=0.5 meters, not including end points]:")
+%timeit arcpy.GeneratePointsAlongLines_management(line, line_points, Distance=0.5, Include_End_Points=False)
+arcpy.Delete_management(line_points)
+
+
+print("\nRunning time for 'Geometry().points_along_feature' [distance=0.5 meters, not including end points]:")
+geom = Geometry(line)
+%timeit geom.points_along_feature(line_points, distance=0.5)
+arcpy.Delete_management(line_points)
+print(" ")
+# ---------------------------------------------------------------------------------------------------------------------

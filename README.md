@@ -14,32 +14,63 @@ Within the toolbox 'Toolbox.tbx' you find several tools to edit and calculate ge
 - Numerate: Sort any feature and create a field for the sort range.
 - Points Along Feature: Create points along a polyline or polygon feature (layer/class) for a selected distance.
 - Polyline To Polygon: Create a polygon feature class from a polyline feature (layer/class).
+- Rotate: Rotate a feature class by different rotation methods (layer/class).
 
 
 **Why the project is useful?**<br>
-These tools expands the possibilities in dealing with geometries.
+These tools expand the possibilities in dealing with geometries in ArcGIS Pro.
 
 
 **How can users get started with the project?**<br>
 After downloading the entire repo, the toolbox 'Toolbox.tbx' can be directly used within ArcGIS Pro.
-You can use the class 'Geometry' from the script '.script\Geometry.py' in other scripts as well.
+You can also use the `Geometry` class from `src/arcgis_pro_geometry/Geometry.py` in your own scripts:
+
+```python
+from arcgis_pro_geometry.Geometry import Geometry
+
+with Geometry(feature_layer) as geom:
+    geom.boundary(output_path)
+```
 
 
 **Where can users get help for their project?**<br>
-- ArcGIS Pro - Every tool within the toolbox has edited metadata. You can read the metadata through the info buttons.
-- Class Geometry - Every script is documented.
+- ArcGIS Pro — Every tool within the toolbox has edited metadata. You can read the metadata through the info buttons.
+- Class Geometry — Every method is documented with docstrings.
 
 
-**Requirements?**<br>
-- ArcGIS Pro 2.8.1+
-- Frameworks:
+**Project structure**<br>
+```
+arcgis-pro-geometry/
+├── data/
+│   ├── _testdata/      # Test geodatabases (input, expected results, test results)
+│   └── layer/          # Layer files (.lyrx)
+├── src/
+│   └── arcgis_pro_geometry/
+│       ├── Geometry.py         # Main Geometry class (library)
+│       ├── boundary.py         # ArcGIS toolbox script: Boundary
+│       ├── circle_from_three_points.py
+│       ├── cut.py
+│       ├── distance_line.py
+│       ├── inner_circle.py
+│       ├── numerate.py
+│       ├── points_along_feature.py
+│       ├── polyline_to_polygon.py
+│       └── rotate.py
+├── tests/
+│   └── unit/           # Unit tests (require ArcGIS Pro)
+├── Toolbox.tbx         # ArcGIS Pro toolbox
+└── pyproject.toml
+```
+
+
+**Requirements**<br>
+- ArcGIS Pro 3.5 or 3.6
+- Provided by ArcGIS Pro installation:
     - arcpy
     - numpy
-    - os
-    - sys
 
 
-**Licensing?**<br>
+**Licensing**<br>
 Copyright 2021 by Markus Schön
 
 Licensed under the Apache License, Version 2.0 (the "License");
