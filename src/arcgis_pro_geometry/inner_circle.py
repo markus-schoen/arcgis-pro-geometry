@@ -1,5 +1,6 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create points along a feature for polygon and polyline feature (layer/classes).
+# ArcGIS Pro script tool: Inner Circle
+# Create maximum inner circles and associated centroids for polygons.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -25,19 +26,17 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -51,39 +50,20 @@ __license__ = 'Apache License, Version 2.0'
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
 out_fc_gdb = arcpy.GetParameterAsText(1)
-out_fc_name = arcpy.GetParameterAsText(2)
-distance = arcpy.GetParameter(3)
-include_endpoint = arcpy.GetParameter(4)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+out_fc_circle_name = arcpy.GetParameterAsText(2)
+out_fc_circle_centroid_name = arcpy.GetParameterAsText(3)
+accuracy = arcpy.GetParameter(4)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-out_fc = os.path.join(out_fc_gdb, out_fc_name)
+out_fc_circle = output_path(out_fc_gdb, out_fc_circle_name)
+out_fc_circle_centroid = output_path(out_fc_gdb, out_fc_circle_centroid_name) if out_fc_circle_centroid_name else None
 
-# Create (multi-)points along a polyline or polygon feature
+# Create the inner circles (and optionally their centroids)
 with Geometry(fc) as fc_geom:
-    fc_geom.points_along_feature(out_fc, distance, include_endpoint)
+    fc_geom.inner_circle(out_fc_circle, out_fc_circle_centroid, accuracy)
 
-# Add points to map
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    in_layer_out_fc = active_map.addDataFromPath(out_fc)
+# Add inner circles to content
+add_to_active_map(out_fc_circle, out_fc_circle_centroid)
 # ---------------------------------------------------------------------------------------------------------------------

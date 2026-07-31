@@ -1,7 +1,6 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create minimal bounding rectangles for any feature layer/class.
-#
-# Deprecated: ArcGIS Pro 3.x provides a native tool for this functionality.
+# ArcGIS Pro script tool: Polyline To Polygon
+# Create a polygon feature class from a polyline feature layer/class. The original spatial reference is kept.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -27,19 +26,17 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -52,43 +49,18 @@ __license__ = 'Apache License, Version 2.0'
 
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
-dissolve = arcpy.GetParameter(1)
-out_fc_gdb = arcpy.GetParameterAsText(2)
-out_fc_name = arcpy.GetParameterAsText(3)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-out_fc = os.path.join(out_fc_gdb, out_fc_name)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+out_fc_gdb = arcpy.GetParameterAsText(1)
+out_fc_name = arcpy.GetParameterAsText(2)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-# Dissolve fc
-if dissolve is True:
-    arcpy.Dissolve_management(fc, 'memory/fc')
-    fc = 'memory/fc'
+out_fc = output_path(out_fc_gdb, out_fc_name)
 
-# Create hull rectangle
+# Create polygon
 with Geometry(fc) as fc_geom:
-    fc_geom.hull_rectangle(out_fc)
+    out_fc = fc_geom.polyline_to_polygon(out_fc)
 
-# Add hull rectangle to map
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    in_layer_out_fc = active_map.addDataFromPath(out_fc)
+# Add polygon to map
+add_to_active_map(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------

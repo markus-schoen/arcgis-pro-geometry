@@ -1,11 +1,11 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Public API of the arcgis_pro_geometry package.
+# pytest configuration for the integration tests.
 #
-# Usage:
-#     from arcgis_pro_geometry import Geometry
+# The integration tests compare freshly calculated geometries against the reference results in
+# 'data/_testdata/results.gdb'. They need a real ArcGIS Pro installation (arcpy) and are skipped without one.
 #
-#     with Geometry(feature_layer) as geom:
-#         geom.boundary(output_path)
+# Every test writes its output into a throwaway file geodatabase created below, so a test run never touches the
+# repository and never leaves anything behind.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -27,7 +27,10 @@
 
 
 # MODULES -------------------------------------------------------------------------------------------------------------
-from .geometry import Geometry, GeometryError
+import os
+from pathlib import Path
+
+import pytest
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -36,7 +39,37 @@ from .geometry import Geometry, GeometryError
 __author__ = 'Markus Schön'
 __copyright__ = 'Copyright 2021 by Markus Schön'
 __license__ = 'Apache License, Version 2.0'
-__version__ = '2.0.0'
+# ---------------------------------------------------------------------------------------------------------------------
 
-__all__ = ['Geometry', 'GeometryError', '__version__']
+
+# PATHS ---------------------------------------------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FOLDER_TESTDATA = PROJECT_ROOT / 'data' / '_testdata'
+
+#: Input feature classes
+GDB_DATA = str(FOLDER_TESTDATA / 'data.gdb')
+
+#: Reference results every test compares against
+GDB_RESULTS = str(FOLDER_TESTDATA / 'results.gdb')
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# FIXTURES ------------------------------------------------------------------------------------------------------------
+@pytest.fixture(scope='session')
+def results_gdb(tmp_path_factory):
+    """
+    Create a throwaway file geodatabase for the test output.
+
+    :rtype: str
+    :return: Path of the file geodatabase.
+    """
+
+    arcpy = pytest.importorskip('arcpy')
+
+    folder = str(tmp_path_factory.mktemp('arcgis_pro_geometry'))
+    gdb_name = 'results_test.gdb'
+
+    arcpy.CreateFileGDB_management(folder, gdb_name)
+
+    return os.path.join(folder, gdb_name)
 # ---------------------------------------------------------------------------------------------------------------------

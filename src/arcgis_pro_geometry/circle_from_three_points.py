@@ -1,12 +1,6 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create convex hulls for any feature layer/class.
-#
-# Notes:
-# - You can use the dissolve option, to create one convex hull for all features. This could be helpful in case of point
-#   features.
-# - You can work with selected feature layers.
-#
-# Deprecated: ArcGIS Pro 3.x provides a native tool for this functionality.
+# ArcGIS Pro script tool: Circle From Three Points
+# Create circles for every three points of a point feature layer/class.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -28,23 +22,22 @@
 
 
 # CREDITS -------------------------------------------------------------------------------------------------------------
-# Thanks to all developers who created the used modules.
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
+# Thanks to FelixIP and BERA from gis.stackexchange.com for the inspiration:
+# - https://gis.stackexchange.com/questions/286439/need-tool-for-arcmap-to-draw-circle-touching-three-points
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -52,49 +45,25 @@ from arcgis_pro_geometry.Geometry import Geometry
 __author__ = 'Markus Schön'
 __copyright__ = 'Copyright 2021 by Markus Schön'
 __license__ = 'Apache License, Version 2.0'
-# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 
 
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
-dissolve = arcpy.GetParameterAsText(1)
-out_fc_gdb = arcpy.GetParameterAsText(2)
-out_fc_name = arcpy.GetParameterAsText(3)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+out_fc_gdb = arcpy.GetParameterAsText(1)
+out_fc_circle_name = arcpy.GetParameterAsText(2)
+out_fc_circle_centroid_name = arcpy.GetParameterAsText(3)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-out_fc = os.path.join(out_fc_gdb, out_fc_name)
+out_fc_circle = output_path(out_fc_gdb, out_fc_circle_name)
+out_fc_circle_centroid = output_path(out_fc_gdb, out_fc_circle_centroid_name) if out_fc_circle_centroid_name else None
 
-# Dissolve fc
-if dissolve == 'true':
-    arcpy.Dissolve_management(fc, 'memory/fc')
-    fc = 'memory/fc'
-
-# Create convex hull
+# Create circles (and optionally their centroids)
 with Geometry(fc) as fc_geom:
-    fc_geom.convex_hull(out_fc)
+    fc_geom.circle_from_three_points(out_fc_circle, out_fc_circle_centroid)
 
-# Add convex hull to content
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    in_layer_out_fc = active_map.addDataFromPath(out_fc)
+# Add circles to content
+add_to_active_map(out_fc_circle, out_fc_circle_centroid)
 # ---------------------------------------------------------------------------------------------------------------------

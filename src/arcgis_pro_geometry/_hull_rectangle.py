@@ -1,5 +1,13 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create a polygon feature class from a polyline feature class/layer.
+# ArcGIS Pro script tool: Hull Rectangle
+# Create the minimal bounding rectangle for any feature layer/class.
+#
+# Notes:
+# - You can use the dissolve option, to create one hull rectangle for all features.
+# - You can work with selected feature layers.
+#
+# Deprecated: ArcGIS Pro 3.x provides a native tool for this functionality. The leading underscore of the file name
+# marks the script as deprecated - it is kept because 'Toolbox.tbx' still references it.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -25,19 +33,17 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, dissolve, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -50,38 +56,21 @@ __license__ = 'Apache License, Version 2.0'
 
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
-out_fc_gdb = arcpy.GetParameterAsText(1)
-out_fc_name = arcpy.GetParameterAsText(2)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-out_fc = os.path.join(out_fc_gdb, out_fc_name)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+dissolve_features = arcpy.GetParameter(1)
+out_fc_gdb = arcpy.GetParameterAsText(2)
+out_fc_name = arcpy.GetParameterAsText(3)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-# Create polygon
+out_fc = output_path(out_fc_gdb, out_fc_name)
+
+# Dissolve fc (optional) and create the hull rectangle
+fc = dissolve(fc, dissolve_features)
+
 with Geometry(fc) as fc_geom:
-    out_fc = fc_geom.polyline_to_polygon(out_fc)
+    fc_geom.hull_rectangle(out_fc)
 
-# Add polygon to map
-if out_fc:
-    project = arcpy.mp.ArcGISProject("CURRENT")
-    active_map = project.activeMap
-
-    if active_map:
-        in_layer_out_fc = active_map.addDataFromPath(out_fc)
+# Add hull rectangle to map
+add_to_active_map(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------

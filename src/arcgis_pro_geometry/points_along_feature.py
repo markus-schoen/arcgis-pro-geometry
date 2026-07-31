@@ -1,5 +1,7 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create circles and centroids for every three points of a point feature layer/class.
+# ArcGIS Pro script tool: Points Along Feature
+# Create points along a polyline or polygon feature layer/class for a selected distance.
+# One multipoint is created for each feature.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -22,24 +24,20 @@
 
 # CREDITS -------------------------------------------------------------------------------------------------------------
 # Thanks to all developers who created the used modules.
-# Thanks to FelixIP and BERA from gis.stackexchange.com for the inspiration:
-# - https://gis.stackexchange.com/questions/286439/need-tool-for-arcmap-to-draw-circle-touching-three-points
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -53,41 +51,19 @@ __license__ = 'Apache License, Version 2.0'
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
 out_fc_gdb = arcpy.GetParameterAsText(1)
-out_fc_circle_name = arcpy.GetParameterAsText(2)
-out_fc_circle_centroid_name = arcpy.GetParameterAsText(3)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+out_fc_name = arcpy.GetParameterAsText(2)
+distance = arcpy.GetParameter(3)
+include_endpoint = arcpy.GetParameter(4)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-out_fc_circle = os.path.join(out_fc_gdb, out_fc_circle_name)
-out_fc_circle_centroid = os.path.join(out_fc_gdb, out_fc_circle_centroid_name) if out_fc_circle_centroid_name else None
+out_fc = output_path(out_fc_gdb, out_fc_name)
 
-# Create convex hull feature class
+# Create (multi-)points along a polyline or polygon feature
 with Geometry(fc) as fc_geom:
-    fc_geom.circle_from_three_points(out_fc_circle, out_fc_circle_centroid)
+    out_fc = fc_geom.points_along_feature(out_fc, distance, include_endpoint)
 
-# Add convex hull to content
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    active_map.addDataFromPath(out_fc_circle)
-    if out_fc_circle_centroid:
-        active_map.addDataFromPath(out_fc_circle_centroid)
+# Add points to map
+add_to_active_map(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------

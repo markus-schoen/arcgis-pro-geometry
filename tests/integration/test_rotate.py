@@ -1,5 +1,6 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Scrip description
+# Integration test: rotate methods
+# Requires ArcGIS Pro (arcpy). Skipped automatically if arcpy is not available.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -20,23 +21,21 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# CREDITS -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
 import os
 from pathlib import Path
 
-import arcpy
 import pytest
 
-from arcgis_pro_geometry.Geometry import Geometry
+arcpy = pytest.importorskip('arcpy')
+
+from arcgis_pro_geometry import Geometry
+
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+# MARKERS -------------------------------------------------------------------------------------------------------------
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -50,26 +49,16 @@ __license__ = 'Apache License, Version 2.0'
 # PATHS ---------------------------------------------------------------------------------------------------------------
 folder_tool = Path(__file__).parents[2]
 folder_testdata = os.path.join(folder_tool, 'data', '_testdata')
-
 gdb_data = os.path.join(folder_testdata, 'data.gdb')
 
 dataset_name = 'rotate'
 dataset_results = os.path.join(folder_testdata, 'results.gdb', dataset_name)
-dataset_results_test = os.path.join(folder_testdata, 'results_test.gdb', dataset_name)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# VARIABLES -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # FUNCTIONS -----------------------------------------------------------------------------------------------------------
 @pytest.mark.parametrize(
-    "fc_name, expected",
+    'fc_name, expected',
     [
         ('Point', (32567113.48335, 5746147.131572414)),
         ('Line', (32567113.48335, 5746147.131572414)),
@@ -83,11 +72,11 @@ def test_rotate_extent(fc_name, expected):
     x_center = extent.XMin + 0.5 * extent.width
     y_center = extent.YMin + 0.5 * extent.height
 
-    assert (x_center, y_center) == expected
+    assert (x_center, y_center) == pytest.approx(expected, abs=1e-6)
 
 
 @pytest.mark.parametrize(
-    "fc_name, rotation_angle, expected",
+    'fc_name, rotation_angle, expected',
     [
         ('Polygon', -30, (32567088.7696722, 5745962.970218004)),
         ('Polygon', 20, (32566956.521921936, 5746047.686711164)),
@@ -98,54 +87,22 @@ def test_rotate_extent(fc_name, expected):
     ]
 )
 def test_rotate_xy(fc_name, rotation_angle, expected):
-    # xy coordinates, to be rotated
     x = 32567000
     y = 5746000
 
-    # Get fc extent centroid as rotation point
     fc = os.path.join(gdb_data, fc_name)
     extent = arcpy.Describe(fc).extent
     x_center = extent.XMin + 0.5 * extent.width
     y_center = extent.YMin + 0.5 * extent.height
-    # x_center = 32567113.48335
-    # y_center = 5746147.131572414
 
     geom = Geometry(fc)
-    assert geom.rotate_xy(x, y, rotation_angle=rotation_angle, x_cnt=x_center, y_cnt=y_center) == expected
+    rotated = geom.rotate_xy(x, y, rotation_angle=rotation_angle, x_cnt=x_center, y_cnt=y_center)
 
-
-'''
-def test_rotate_polygon_xy_90():
-    # https://pro.arcgis.com/en/pro-app/latest/tool-reference/data-management/feature-compare.htm
-
-    polygon_name = 'polygon_rot_xy_90'
-    polygon_rot = os.path.join(dataset_results, polygon_name)
-    polygon_rot_test = os.path.join(dataset_results_test, polygon_name)
-
-    extent = arcpy.Describe(polygon).extent
-    x_center = extent.XMin + 0.5 * extent.width
-    y_center = extent.YMin + 0.5 * extent.height
-
-    geom = Geometry(polygon)
-    rotation_angle = 90
-    geom.rotate_fc(
-        polygon_rot_test, rotation_value='xy', rotation_angle=rotation_angle, rotation_x=x_center, rotation_y=y_center
-    )
-
-    result = arcpy.FeatureCompare_management(
-        polygon_rot, polygon_rot_test, 'OBJECTID', omit_field='Shape_Area', continue_compare='CONTINUE_COMPARE'
-    )
-
-    assert result.getOutput(1) == 'true'
-
-    arcpy.Delete_management(polygon_rot_test)
-'''
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+    assert rotated == pytest.approx(expected, abs=1e-6)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
+if __name__ == '__main__':
+    pass
 # ---------------------------------------------------------------------------------------------------------------------

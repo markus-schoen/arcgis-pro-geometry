@@ -1,5 +1,7 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create maximum inner circles and associated centroids for polygons.
+# ArcGIS Pro script tool: Numerate
+# Numerate all features by their coordinates.
+# To store the results, this tool creates a short integer field. The lowest value is 1.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -25,19 +27,17 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import arcgis_pro_geometry._toolbox  # noqa: F401  (sets arcpy.env.overwriteOutput)
+from arcgis_pro_geometry import Geometry
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -49,44 +49,14 @@ __license__ = 'Apache License, Version 2.0'
 
 
 # VARIABLES -----------------------------------------------------------------------------------------------------------
-fc = arcpy.GetParameterAsText(0)
-out_fc_gdb = arcpy.GetParameterAsText(1)
-out_fc_circle_name = arcpy.GetParameterAsText(2)
-out_fc_circle_centroid_name = arcpy.GetParameterAsText(3)
-accuracy = arcpy.GetParameter(4)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+point_fc = arcpy.GetParameterAsText(0)
+sort_by = arcpy.GetParameterAsText(1)
+id_field_name = arcpy.GetParameterAsText(2)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-out_fc_circle = os.path.join(out_fc_gdb, out_fc_circle_name)
-out_fc_circle_centroid = os.path.join(out_fc_gdb, out_fc_circle_centroid_name) if out_fc_circle_centroid_name else None
-
-# Create boundary
-with Geometry(fc) as fc_geom:
-    fc_geom.inner_circle(out_fc_circle, out_fc_circle_centroid, accuracy)
-
-# Add boundary to content
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    active_map.addDataFromPath(out_fc_circle)
-    if out_fc_circle_centroid:
-        active_map.addDataFromPath(out_fc_circle_centroid)
+# Numerate the features in place - no new feature class is created, so nothing has to be added to the map
+with Geometry(point_fc) as point_fc_geom:
+    point_fc_geom.numerate(sort_by=sort_by, field_name=id_field_name)
 # ---------------------------------------------------------------------------------------------------------------------

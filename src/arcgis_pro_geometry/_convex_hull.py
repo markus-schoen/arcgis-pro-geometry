@@ -1,5 +1,14 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create a boundary feature class for polygon and polyline feature layer/classes.
+# ArcGIS Pro script tool: Convex Hull
+# Create convex hulls for any feature layer/class.
+#
+# Notes:
+# - You can use the dissolve option, to create one convex hull for all features. This could be helpful in case of point
+#   features.
+# - You can work with selected feature layers.
+#
+# Deprecated: ArcGIS Pro 3.x provides a native tool for this functionality. The leading underscore of the file name
+# marks the script as deprecated - it is kept because 'Toolbox.tbx' still references it.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -25,19 +34,17 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, dissolve, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -50,38 +57,21 @@ __license__ = 'Apache License, Version 2.0'
 
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
-out_fc_gdb = arcpy.GetParameterAsText(1)
-out_fc_name = arcpy.GetParameterAsText(2)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+dissolve_features = arcpy.GetParameterAsText(1)
+out_fc_gdb = arcpy.GetParameterAsText(2)
+out_fc_name = arcpy.GetParameterAsText(3)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-out_fc = os.path.join(out_fc_gdb, out_fc_name)
+out_fc = output_path(out_fc_gdb, out_fc_name)
 
-# Create boundary
+# Dissolve fc (optional) and create the convex hull
+fc = dissolve(fc, dissolve_features)
+
 with Geometry(fc) as fc_geom:
-    fc_geom.boundary(out_fc)
+    fc_geom.convex_hull(out_fc)
 
-# Add boundary to content
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    in_layer_out_fc = active_map.addDataFromPath(out_fc)
+# Add convex hull to content
+add_to_active_map(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 # SCRIPT --------------------------------------------------------------------------------------------------------------
-# Create an extent feature class for any feature layer/class.
-#
-# Deprecated: ArcGIS Pro 3.x provides a native tool for this functionality.
+# ArcGIS Pro script tool: Boundary
+# Create a boundary feature class for polygon and polyline feature layer/classes.
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -27,19 +26,17 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# TODO /
-# ---------------------------------------------------------------------------------------------------------------------
-
-
 # MODULES -------------------------------------------------------------------------------------------------------------
-import os
 import sys
+from pathlib import Path
 
 import arcpy
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src'))
-from arcgis_pro_geometry.Geometry import Geometry
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from arcgis_pro_geometry import Geometry
+from arcgis_pro_geometry._toolbox import add_to_active_map, output_path
+
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -52,44 +49,18 @@ __license__ = 'Apache License, Version 2.0'
 
 # VARIABLES -----------------------------------------------------------------------------------------------------------
 fc = arcpy.GetParameterAsText(0)
-dissolve = arcpy.GetParameterAsText(1)
-out_fc_gdb = arcpy.GetParameterAsText(2)
-out_fc_name = arcpy.GetParameterAsText(3)
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PATHS ---------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# CLASSES -------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# FUNCTIONS -----------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-# PREPARATION ---------------------------------------------------------------------------------------------------------
+out_fc_gdb = arcpy.GetParameterAsText(1)
+out_fc_name = arcpy.GetParameterAsText(2)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 # MAIN PROGRAM --------------------------------------------------------------------------------------------------------
-out_fc = os.path.join(out_fc_gdb, out_fc_name)
+out_fc = output_path(out_fc_gdb, out_fc_name)
 
-# Dissolve fc
-if dissolve == 'true':
-    arcpy.Dissolve_management(fc, 'memory/fc')
-    fc = 'memory/fc'
-
-# Create extent
+# Create boundary
 with Geometry(fc) as fc_geom:
-    fc_geom.extent(out_fc)
+    fc_geom.boundary(out_fc)
 
-# Add extent to map
-project = arcpy.mp.ArcGISProject("CURRENT")
-active_map = project.activeMap
-
-if active_map:
-    in_layer_out_fc = active_map.addDataFromPath(out_fc)
+# Add boundary to content
+add_to_active_map(out_fc)
 # ---------------------------------------------------------------------------------------------------------------------
