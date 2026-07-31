@@ -72,6 +72,31 @@ long-standing defects changed.
   point. Regenerate that dataset with ArcGIS Pro and drop the `xfail` marker in
   `tests/integration/test_points_along_feature.py`.
 
+## [1.8.0]
+
+### Changed
+
+- Refactoring pass over the tool scripts.
+
+## [1.7.0]
+
+### Changed
+
+- `polyline_to_polygon()` returns the path of the output polygon feature class, and an empty string when the conversion
+  fails.
+- A failed conversion reports a warning instead of an error: a coordinate system that does not match the coordinates is
+  a reason to skip the output, not to fail the tool.
+
+## [1.6.0]
+
+### Added
+
+- **Rotate** tool: rotates a feature class by five different rotation methods.
+
+### Changed
+
+- `polyline_to_polygon()` respects curves and attributes.
+
 ## [1.5.0]
 
 ### Added
@@ -137,7 +162,10 @@ long-standing defects changed.
 - First release: **Boundary**, **Circle From Three Points**, **Convex Hull**, **Cut**, **Distance Lines**,
   **Inner Circle** and **Numerate**, with complete toolbox metadata.
 
-[2.0.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.5.0...v2.0.0
+[2.0.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.8.0...v2.0.0
+[1.8.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/markus-schoen/arcgis-pro-geometry/compare/v1.2.2...v1.3.0
