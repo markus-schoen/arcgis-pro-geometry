@@ -1,0 +1,21 @@
+# Normalize line endings: LF in the repository, native in the working directory.
+* text=auto
+
+# Source and configuration
+*.py    text diff=python
+*.md    text
+*.toml  text
+*.cfg   text
+*.yml   text
+*.yaml  text
+
+# Windows batch files only work with CRLF
+*.bat   text eol=crlf
+
+# ArcGIS assets - never apply line ending conversion to these
+*.tbx   binary
+*.lyrx  text
+data/_testdata/** binary
+
+# Keep the toolbox out of the diff output - it is a binary ArcGIS format
+*.tbx   -diff
