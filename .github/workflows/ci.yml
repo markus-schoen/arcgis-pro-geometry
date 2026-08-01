@@ -16,9 +16,9 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -37,9 +37,9 @@ jobs:
         # 3.9 is the Python version shipped with ArcGIS Pro 3.x, 3.11 is the version of ArcGIS Pro 3.5/3.6.
         python-version: ["3.9", "3.11"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
