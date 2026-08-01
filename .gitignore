@@ -26,21 +26,10 @@ htmlcov/
 
 # Environments
 .env
-.env.*
-!.env.example
 .venv
 env/
 venv/
 ENV/
-
-# Secrets - never commit credentials, keys or certificates
-*.secret
-secrets.*
-credentials.*
-*.pem
-*.key
-id_rsa
-id_ed25519
 
 # IDE
 .idea/
